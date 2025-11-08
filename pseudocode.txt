@@ -1,0 +1,387 @@
+================================================================================
+           PSEUDOCODE - CHƯƠNG TRÌNH TÌM ĐƯỜNG ĐI NGẮN NHẤT
+================================================================================
+
+------------------------------------------------------------
+HÀM GEOCODE(q):
+------------------------------------------------------------
+INPUT: q - Địa chỉ dạng chuỗi (string)
+OUTPUT: (lat, lon, name) - Tọa độ và tên địa điểm
+
+BẮT ĐẦU
+    CHỜ 1 giây                           // Tránh spam API
+    GỬI request đến Nominatim API với query = q
+    NHẬN response dạng JSON
+    
+    NẾU response rỗng:
+        RAISE ValueError("Không tìm thấy địa chỉ")
+    
+    result ← response[0]                 // Lấy kết quả đầu tiên
+    lat ← chuyển result["lat"] sang float
+    lon ← chuyển result["lon"] sang float
+    name ← result["display_name"]
+    
+    TRẢ VỀ (lat, lon, name)
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM OSRM_GEOM(lon1, lat1, lon2, lat2, vehicle_type):
+------------------------------------------------------------
+INPUT: 
+    - lon1, lat1: Tọa độ điểm bắt đầu
+    - lon2, lat2: Tọa độ điểm đích
+    - vehicle_type: "driving" hoặc "bike"
+OUTPUT: (geometry, khoảng_cách_km, thời_gian_giờ)
+
+BẮT ĐẦU
+    url ← "https://router.project-osrm.org/route/v1/{vehicle_type}/{lon1},{lat1};{lon2},{lat2}"
+    params ← {overview: "full", geometries: "geojson"}
+    
+    GỬI GET request đến url với params
+    NHẬN response dạng JSON
+    
+    route ← response["routes"][0]
+    geometry ← route["geometry"]         // GeoJSON LineString
+    distance_km ← route["distance"] / 1000
+    duration_hrs ← route["duration"] / 3600
+    
+    TRẢ VỀ (geometry, distance_km, duration_hrs)
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM ROUTE_STEPS(lon1, lat1, lon2, lat2, vehicle_type):
+------------------------------------------------------------
+INPUT: Tọa độ 2 điểm và loại phương tiện
+OUTPUT: None (in ra màn hình)
+
+BẮT ĐẦU
+    url ← "https://router.project-osrm.org/route/v1/{vehicle_type}/{lon1},{lat1};{lon2},{lat2}"
+    params ← {overview: "false", steps: "true"}
+    
+    GỬI GET request đến url với params
+    NHẬN response dạng JSON
+    
+    route ← response["routes"][0]
+    dist_km ← route["distance"] / 1000
+    dur_min ← route["duration"] / 60
+    
+    // Xác định tên phương tiện
+    NẾU vehicle_type == "driving":
+        vehicle_name ← "🚗 Ô TÔ"
+    NGƯỢC LẠI:
+        vehicle_name ← "🏍️ XE MÁY"
+    
+    IN tiêu đề với vehicle_name
+    IN "Quãng đường: " + dist_km + " km"
+    IN "Thời gian ước tính: " + dur_min + " phút"
+    IN "--- CHỈ DẪN CHI TIẾT ---"
+    
+    step_number ← 1
+    FOR mỗi leg TRONG route["legs"]:
+        FOR mỗi step TRONG leg["steps"]:
+            instruction ← step["maneuver"]["instruction"] HOẶC "Tiếp tục đi"
+            street_name ← step["name"] HOẶC ""
+            distance_m ← step["distance"]
+            
+            // Format khoảng cách
+            NẾU distance_m >= 1000:
+                distance_str ← (distance_m / 1000) + " km"
+            NGƯỢC LẠI:
+                distance_str ← distance_m + " m"
+            
+            // In chỉ dẫn
+            NẾU street_name KHÔNG RỖNG:
+                IN step_number + ". " + instruction + " vào " + street_name + " (" + distance_str + ")"
+            NGƯỢC LẠI:
+                IN step_number + ". " + instruction + " (" + distance_str + ")"
+            
+            step_number ← step_number + 1
+    
+    IN "✅ ĐÃ ĐẾN ĐÍCH!"
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM GET_VEHICLE_CHOICE():
+------------------------------------------------------------
+OUTPUT: "driving" hoặc "bike" hoặc "both"
+
+BẮT ĐẦU
+    IN "=== CHỌN LOẠI PHƯƠNG TIỆN ==="
+    IN "1. 🚗 Ô tô"
+    IN "2. 🏍️ Xe máy"
+    IN "3. 🔄 So sánh cả hai"
+    
+    LẶP LẠI MÃI:
+        choice ← NHẬP từ người dùng
+        
+        NẾU choice == "1":
+            TRẢ VỀ "driving"
+        NGƯỢC LẠI NẾU choice == "2":
+            TRẢ VỀ "bike"
+        NGƯỢC LẠI NẾU choice == "3":
+            TRẢ VỀ "both"
+        NGƯỢC LẠI:
+            IN "❌ Lựa chọn không hợp lệ! Vui lòng chọn 1, 2 hoặc 3."
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM GET_USER_LOCATIONS():
+------------------------------------------------------------
+OUTPUT: (lat1, lon1, name1, lat2, lon2, name2) hoặc None
+
+BẮT ĐẦU
+    IN "=== NHẬP ĐỊA CHỈ ==="
+    
+    start_address ← NHẬP "Địa chỉ bắt đầu: "
+    NẾU start_address RỖNG:
+        start_address ← "Dinh Thống Nhất, TPHCM, Việt Nam"  // Mặc định
+        IN "→ Sử dụng mặc định: " + start_address
+    
+    end_address ← NHẬP "Địa chỉ đến: "
+    NẾU end_address RỖNG:
+        end_address ← "Sân bay Tân Sơn Nhất, TPHCM, Việt Nam"  // Mặc định
+        IN "→ Sử dụng mặc định: " + end_address
+    
+    IN "🔍 Đang tìm kiếm địa chỉ..."
+    
+    THỬ:
+        lat1, lon1, name1 ← GEOCODE(start_address)
+        IN "✓ Điểm đầu: " + name1
+        
+        lat2, lon2, name2 ← GEOCODE(end_address)
+        IN "✓ Điểm đến: " + name2
+        
+        TRẢ VỀ (lat1, lon1, name1, lat2, lon2, name2)
+    BẮT LỖI Exception AS e:
+        IN "❌ Lỗi: " + e
+        TRẢ VỀ None
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM SHOW_ROUTE_FOR_VEHICLE(lon1, lat1, lon2, lat2, name1, name2, vehicle_type):
+------------------------------------------------------------
+INPUT: Tọa độ, tên địa điểm, loại phương tiện
+OUTPUT: None (hiển thị chỉ đường và vẽ bản đồ)
+
+BẮT ĐẦU
+    NẾU vehicle_type == "driving":
+        vehicle_name ← "🚗 Ô TÔ"
+    NGƯỢC LẠI:
+        vehicle_name ← "🏍️ XE MÁY"
+    
+    IN "=== TÌM ĐƯỜNG CHO " + vehicle_name + " ==="
+    
+    // Hiển thị chỉ dẫn
+    GỌI ROUTE_STEPS(lon1, lat1, lon2, lat2, vehicle_type)
+    
+    // Vẽ bản đồ
+    GỌI DRAW_SINGLE_VEHICLE_MAP(lon1, lat1, lon2, lat2, name1, name2, vehicle_type)
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM DRAW_SINGLE_VEHICLE_MAP(lon1, lat1, lon2, lat2, name1, name2, vehicle_type):
+------------------------------------------------------------
+INPUT: Tọa độ, tên địa điểm, loại phương tiện
+OUTPUT: File HTML bản đồ
+
+BẮT ĐẦU
+    NẾU vehicle_type == "driving":
+        vehicle_name ← "Ô tô"
+        vehicle_icon ← "🚗"
+        color ← "blue"
+    NGƯỢC LẠI:
+        vehicle_name ← "Xe máy"
+        vehicle_icon ← "🏍️"
+        color ← "orange"
+    
+    IN "=== VẼ BẢN ĐỒ CHO " + vehicle_icon + " " + vehicle_name.upper() + " ==="
+    
+    // Lấy tuyến đường
+    IN vehicle_icon + " Đang tính toán tuyến đường..."
+    geometry, km, hrs ← OSRM_GEOM(lon1, lat1, lon2, lat2, vehicle_type)
+    IN "✓ " + vehicle_name + ": " + km + " km, " + (hrs * 60) + " phút"
+    
+    // Tính toán center và zoom
+    center_lat ← (lat1 + lat2) / 2
+    center_lon ← (lon1 + lon2) / 2
+    
+    NẾU km < 10:
+        zoom ← 13
+    NGƯỢC LẠI NẾU km < 50:
+        zoom ← 11
+    NGƯỢC LẠI NẾU km < 200:
+        zoom ← 9
+    NGƯỢC LẠI:
+        zoom ← 7
+    
+    // Tạo bản đồ Folium
+    map ← TẠO bản đồ tại (center_lat, center_lon) với zoom_start = zoom
+    
+    // Thêm markers
+    THÊM Marker màu xanh lá tại (lat1, lon1) với popup = name1, icon = "play"
+    THÊM Marker màu đỏ tại (lat2, lon2) với popup = name2, icon = "stop"
+    
+    // Vẽ đường
+    latlon ← CHUYỂN geometry["coordinates"] từ (lon,lat) sang (lat,lon)
+    THÊM PolyLine màu color, độ dày 5, opacity 0.7 với popup thông tin
+    
+    // Lưu file
+    output_file ← "route_" + vehicle_type + ".html"
+    LƯU map vào output_file
+    IN "✓ Đã lưu bản đồ: " + output_file
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM COMPARE_ROUTES(lon1, lat1, lon2, lat2, name1, name2):
+------------------------------------------------------------
+INPUT: Tọa độ và tên 2 địa điểm
+OUTPUT: None (hiển thị so sánh và vẽ bản đồ)
+
+BẮT ĐẦU
+    IN "=== SO SÁNH Ô TÔ VÀ XE MÁY ==="
+    
+    // Hiển thị chỉ dẫn cho ô tô
+    IN "--- 1️⃣ CHỈ ĐƯỜNG CHO Ô TÔ 🚗 ---"
+    GỌI ROUTE_STEPS(lon1, lat1, lon2, lat2, "driving")
+    
+    // Hiển thị chỉ dẫn cho xe máy
+    IN "--- 2️⃣ CHỈ ĐƯỜNG CHO XE MÁY 🏍️ ---"
+    GỌI ROUTE_STEPS(lon1, lat1, lon2, lat2, "bike")
+    
+    // Vẽ bản đồ so sánh
+    GỌI DRAW_COMPARISON_MAP(lon1, lat1, lon2, lat2, name1, name2)
+KẾT THÚC
+
+------------------------------------------------------------
+HÀM DRAW_COMPARISON_MAP(lon1, lat1, lon2, lat2, name1, name2):
+------------------------------------------------------------
+INPUT: Tọa độ và tên 2 địa điểm
+OUTPUT: File HTML bản đồ so sánh
+
+BẮT ĐẦU
+    IN "=== VẼ BẢN ĐỒ SO SÁNH ==="
+    
+    // Lấy tuyến đường cho ô tô
+    IN "🚗 Đang tính toán tuyến đường ô tô..."
+    geom_car, km_car, hrs_car ← OSRM_GEOM(lon1, lat1, lon2, lat2, "driving")
+    IN "✓ Ô tô: " + km_car + " km, " + (hrs_car * 60) + " phút"
+    
+    // Lấy tuyến đường cho xe máy
+    IN "🏍️ Đang tính toán tuyến đường xe máy..."
+    geom_bike, km_bike, hrs_bike ← OSRM_GEOM(lon1, lat1, lon2, lat2, "bike")
+    IN "✓ Xe máy: " + km_bike + " km, " + (hrs_bike * 60) + " phút"
+    
+    // Tạo bản đồ
+    center_lat ← (lat1 + lat2) / 2
+    center_lon ← (lon1 + lon2) / 2
+    map ← TẠO bản đồ tại (center_lat, center_lon) với zoom_start = 13
+    
+    // Thêm markers
+    THÊM Marker màu xanh lá tại (lat1, lon1) với popup = name1, icon = "play"
+    THÊM Marker màu đỏ tại (lat2, lon2) với popup = name2, icon = "stop"
+    
+    // Vẽ đường ô tô (màu xanh dương)
+    latlon_car ← CHUYỂN geom_car["coordinates"] từ (lon,lat) sang (lat,lon)
+    THÊM PolyLine màu "blue", độ dày 5, opacity 0.7
+    
+    // Vẽ đường xe máy (màu đỏ)
+    latlon_bike ← CHUYỂN geom_bike["coordinates"] từ (lon,lat) sang (lat,lon)
+    THÊM PolyLine màu "red", độ dày 5, opacity 0.7
+    
+    // Thêm chú thích (legend)
+    legend_html ← TẠO HTML cho legend với thông tin km_car và km_bike
+    THÊM legend_html vào map
+    
+    // Lưu file
+    LƯU map vào "route_comparison.html"
+    IN "✓ Đã lưu bản đồ: route_comparison.html"
+    
+    // So sánh kết quả
+    IN "=== KẾT QUẢ SO SÁNH ==="
+    IN "🚗 Ô tô:    " + km_car + " km  |  " + (hrs_car * 60) + " phút"
+    IN "🏍️ Xe máy:  " + km_bike + " km  |  " + (hrs_bike * 60) + " phút"
+    
+    diff_km ← |km_car - km_bike|
+    diff_min ← |(hrs_car * 60) - (hrs_bike * 60)|
+    
+    NẾU km_car < km_bike:
+        IN "✅ Ô tô ngắn hơn: " + diff_km + " km (" + diff_min + " phút)"
+    NGƯỢC LẠI NẾU km_bike < km_car:
+        IN "✅ Xe máy ngắn hơn: " + diff_km + " km (" + diff_min + " phút)"
+    NGƯỢC LẠI:
+        IN "✅ Cả hai đi cùng đường!"
+KẾT THÚC
+
+================================================================================
+                           CHƯƠNG TRÌNH CHÍNH (MAIN)
+================================================================================
+
+BẮT ĐẦU
+    IN "=== 🗺️ CHƯƠNG TRÌNH TÌM ĐƯỜNG ĐI NGẮN NHẤT ==="
+    
+    // Bước 1: Lấy địa chỉ từ người dùng
+    locations ← GỌI GET_USER_LOCATIONS()
+    NẾU locations == None:
+        IN "❌ Không thể lấy địa chỉ. Chương trình kết thúc."
+        THOÁT với mã lỗi 1
+    
+    lat1, lon1, name1, lat2, lon2, name2 ← locations
+    
+    // Bước 2: Cho người dùng chọn phương tiện
+    choice ← GỌI GET_VEHICLE_CHOICE()
+    
+    // Bước 3: Thực hiện theo lựa chọn
+    NẾU choice == "driving":
+        GỌI SHOW_ROUTE_FOR_VEHICLE(lon1, lat1, lon2, lat2, name1, name2, "driving")
+    NGƯỢC LẠI NẾU choice == "bike":
+        GỌI SHOW_ROUTE_FOR_VEHICLE(lon1, lat1, lon2, lat2, name1, name2, "bike")
+    NGƯỢC LẠI NẾU choice == "both":
+        GỌI COMPARE_ROUTES(lon1, lat1, lon2, lat2, name1, name2)
+    
+    IN "=== ✅ HOÀN THÀNH! ==="
+KẾT THÚC
+
+================================================================================
+                              DỮ LIỆU VÀ API
+================================================================================
+
+CÁC HẰNG SỐ:
+    NOMINATIM ← "https://nominatim.openstreetmap.org"
+    OSRM ← "https://router.project-osrm.org"
+    USER_AGENT ← "OSM-Demo-Combined/1.0"
+
+CÁC API ENDPOINT:
+    1. Nominatim Geocoding:
+       GET https://nominatim.openstreetmap.org/search
+       Params: q (địa chỉ), format ("jsonv2"), limit (1)
+       
+    2. OSRM Routing:
+       GET https://router.project-osrm.org/route/v1/{vehicle_type}/{lon1},{lat1};{lon2},{lat2}
+       Params: overview, geometries, steps
+       Vehicle_type: "driving" (ô tô) hoặc "bike" (xe máy)
+
+CÁC FILE OUTPUT:
+    - route_driving.html: Bản đồ cho ô tô
+    - route_bike.html: Bản đồ cho xe máy
+    - route_comparison.html: Bản đồ so sánh 2 loại xe
+
+================================================================================
+                            GHI CHÚ VÀ ĐỘ PHỨC TẠP
+================================================================================
+
+ĐỘ PHỨC TẠP THỜI GIAN:
+    - geocode(): O(1) - API call
+    - osrm_geom(): O(1) - API call
+    - route_steps(): O(n) - n là số bước trong tuyến đường
+    - draw_map(): O(m) - m là số điểm trong geometry
+
+ĐỘ PHỨC TẠP KHÔNG GIAN:
+    - O(n) cho lưu trữ tọa độ và geometry
+
+LƯU Ý:
+    - Có delay 1 giây giữa các request để tránh spam API
+    - Xử lý lỗi khi không tìm thấy địa chỉ
+    - Tự động điều chỉnh zoom dựa trên khoảng cách
+    - Hỗ trợ địa chỉ mặc định nếu người dùng không nhập
+
+================================================================================
