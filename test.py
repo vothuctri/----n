@@ -5,11 +5,55 @@ import requests
 import folium
 from urllib.parse import quote
 
-# --- THÊM CÁC HẰNG SỐ BỊ THIẾU ---
 NOMINATIM = "https://nominatim.openstreetmap.org"
 OSRM = "https://router.project-osrm.org"
+OPENWEATHER_API_KEY = "YOUR_API_KEY_HERE"  # Thay bằng API key từ https://openweathermap.org/api
+OPENWEATHER = "https://api.openweathermap.org/data/2.5/weather"
 UA = {"User-Agent": "OSM-Demo-Combined/1.0 (contact: your_email@example.com)"}
-# -----------------------------------
+
+def get_weather(lat, lon, location_name):
+    """
+    Lấy thông tin thời tiết cho một địa điểm dựa trên tọa độ.
+    Trả về: thông tin thời tiết dạng dict hoặc None nếu lỗi
+    """
+    # Nếu chưa có API key, bỏ qua
+    if OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
+        print("  ⚠️  Chưa cấu hình API key thời tiết (xem https://openweathermap.org/api)")
+        return None
+    
+    try:
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "appid": OPENWEATHER_API_KEY,
+            "units": "metric",  # Celsius
+            "lang": "vi"  # Tiếng Việt
+        }
+        r = requests.get(OPENWEATHER, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        
+        # Lấy thông tin cần thiết
+        temp = data["main"]["temp"]
+        feels_like = data["main"]["feels_like"]
+        humidity = data["main"]["humidity"]
+        description = data["weather"][0]["description"]
+        wind_speed = data["wind"]["speed"]
+        
+        # Hiển thị thông tin thời tiết
+        print(f"\n  🌤️  Thời tiết tại {location_name}:")
+        print(f"     🌡️  Nhiệt độ: {temp:.1f}°C (cảm giác như {feels_like:.1f}°C)")
+        print(f"     ☁️  Tình trạng: {description.capitalize()}")
+        print(f"     💧 Độ ẩm: {humidity}%")
+        print(f"     💨 Gió: {wind_speed:.1f} m/s")
+        
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f"  ⚠️  Không thể lấy thông tin thời tiết: {e}")
+        return None
+    except (KeyError, IndexError) as e:
+        print(f"  ⚠️  Lỗi xử lý dữ liệu thời tiết: {e}")
+        return None
 
 def geocode(q):
     """
@@ -122,9 +166,13 @@ def get_user_locations():
     try:
         lat1, lon1, name1 = geocode(start_address)
         print(f"  ✓ Điểm đầu: {name1}")
+        # Hiển thị thời tiết điểm đầu
+        get_weather(lat1, lon1, "điểm đầu")
         
         lat2, lon2, name2 = geocode(end_address)
         print(f"  ✓ Điểm đến: {name2}")
+        # Hiển thị thời tiết điểm đến
+        get_weather(lat2, lon2, "điểm đến")
         
         return lat1, lon1, name1, lat2, lon2, name2
     except Exception as e:

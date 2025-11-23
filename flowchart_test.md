@@ -24,13 +24,6 @@ flowchart TD
     MapCar --> End([✅ KẾT THÚC])
     MapBike --> End
     MapCompare --> End
-    
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style Choice fill:#FFD700
-    style Car fill:#87CEEB
-    style Bike fill:#FFA500
-    style Compare fill:#DDA0DD
 ```
 
 ## Sơ đồ Chi Tiết Hàm geocode()
@@ -45,11 +38,6 @@ flowchart TD
     E -->|Có| G[Lấy lat, lon, name<br/>từ kết quả đầu tiên]
     G --> H([Trả về lat, lon, name])
     F --> I([Kết thúc với lỗi])
-    
-    style A fill:#90EE90
-    style H fill:#90EE90
-    style F fill:#FF6B6B
-    style I fill:#FFB6C1
 ```
 
 ## Sơ đồ Chi Tiết Hàm route_steps()
@@ -72,9 +60,6 @@ flowchart TD
     M -->|Có| H
     M -->|Không| N[In thông báo đến đích]
     N --> O([Kết thúc])
-    
-    style A fill:#90EE90
-    style O fill:#90EE90
 ```
 
 ## Sơ đồ Chi Tiết Hàm osrm_geom()
@@ -88,9 +73,6 @@ flowchart TD
     E --> F[Trích xuất:<br/>- geometry hình học<br/>- distance khoảng cách<br/>- duration thời gian]
     F --> G[Chuyển đổi:<br/>distance → km<br/>duration → giờ]
     G --> H([Trả về geometry,<br/>km, giờ])
-    
-    style A fill:#90EE90
-    style H fill:#90EE90
 ```
 
 ## Sơ đồ Vẽ Bản Đồ Đơn (draw_single_vehicle_map)
@@ -110,10 +92,6 @@ flowchart TD
     J -->|Xe máy| L[Lưu route_bike.html]
     K --> M([Kết thúc])
     L --> M
-    
-    style A fill:#90EE90
-    style M fill:#90EE90
-    style J fill:#FFD700
 ```
 
 ## Sơ đồ Vẽ Bản Đồ So Sánh (draw_comparison_map)
@@ -136,10 +114,6 @@ flowchart TD
     L --> O([Kết thúc])
     M --> O
     N --> O
-    
-    style A fill:#90EE90
-    style O fill:#90EE90
-    style K fill:#FFD700
 ```
 
 ## Sơ đồ Luồng Chính (Main Flow)
@@ -188,11 +162,6 @@ flowchart TD
     MapB --> Done
     MapC --> Done
     Done --> End([✅ END])
-    
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style Process fill:#FFD700
-    style ValidInput fill:#FFD700
 ```
 
 ## Sơ đồ Cấu Trúc Dữ Liệu
@@ -220,9 +189,6 @@ graph TB
         Nom --> Lon[lon number]
         Nom --> Display[display_name string]
     end
-    
-    style OSRM fill:#87CEEB
-    style Nom fill:#FFB6C1
 ```
 
 ## Ghi Chú
