@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Module xử lý thời tiết - lấy thông tin thời tiết từ OpenWeatherMap
+Module xử lý thời tiết - sử dụng wttr.in API (miễn phí, không cần API key)
 """
 
 import requests
-from config import OPENWEATHER, OPENWEATHER_API_KEY
 
 
 def get_weather(lat, lon):
@@ -18,28 +17,22 @@ def get_weather(lat, lon):
     Returns:
         dict: Thông tin thời tiết hoặc None nếu lỗi
     """
-    # Nếu chưa có API key, bỏ qua
-    if OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
-        return None
-    
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "appid": OPENWEATHER_API_KEY,
-            "units": "metric",  # Celsius
-            "lang": "vi"  # Tiếng Việt
-        }
-        r = requests.get(OPENWEATHER, params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
+        url = f"https://wttr.in/{lat},{lon}?format=j1"
+        
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Lấy thông tin thời tiết hiện tại
+        current = data["current_condition"][0]
         
         return {
-            "temp": data["main"]["temp"],
-            "feels_like": data["main"]["feels_like"],
-            "humidity": data["main"]["humidity"],
-            "description": data["weather"][0]["description"],
-            "wind_speed": data["wind"]["speed"]
+            "temp": float(current["temp_C"]),
+            "feels_like": float(current["FeelsLikeC"]),
+            "humidity": int(current["humidity"]),
+            "description": current["weatherDesc"][0]["value"],
+            "wind_speed": float(current["windspeedKmph"]) / 3.6  # Chuyển km/h sang m/s
         }
-    except (requests.exceptions.RequestException, KeyError, IndexError):
+    except Exception:
         return None
